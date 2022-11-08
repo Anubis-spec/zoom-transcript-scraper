@@ -7,7 +7,7 @@ import java.util.Set;
 
 public class Main {
     public static void main(String[] args) {
-        String fileContents = readFile("sample01.vtt");
+        String fileContents = readFile("DobervichPlanningSession1.vtt");
         String[] lines = fileContents.split("\n");
         for (int i = 0; i < lines.length; i++) {
             lines[i] = lines[i].trim();
@@ -20,8 +20,8 @@ public class Main {
             PrintWriter out = new PrintWriter( new FileWriter("condensed.txt"));
             for (int i = 4; i < lines.length-4; i+=4) {
                 String name = extractName(lines[i]);
-                double timePerLine = calcSec(lines[i-1]);
-                out.println(name + " " + String.format("%.2f", timePerLine) + " sec \n");
+                double secPerLine = calcMin(lines[i-1]) * 60;
+                    out.println(name + " " + String.format("%.2f", secPerLine) + " sec\n");
             }
             out.close();
         } catch (IOException e) {
@@ -35,15 +35,9 @@ public class Main {
             out.println("Total length of session: " + totalMeetingTime(lines));
             out.println("Total # of speaker switches: " + numOfSwitches(lines) + "\n");
             out.println("Total Talk Time: ");
-            ArrayList<String> names = new ArrayList<>();
-            for (int i = 4; i < lines.length; i+=4) {
-                String name = extractName(lines[i]);
-                names.add(name);
-            }
-            Set<String> uniquePeople = new HashSet<String>(names);
-            String arr[] = uniquePeople.toArray(new String[uniquePeople.size()]);
+            String[] arr = namesList(lines).toArray(new String[namesList(lines).size()]);
             for (int i = 1; i < arr.length; i++) {
-                out.println(arr[i] + " " + totalTalkTime(lines, arr[i]));
+                out.println(arr[i] + " " + peopleTalkTime(lines, arr[i]));
             }
             out.println("\n");
             out.println("Average speaking time: ");
@@ -57,13 +51,7 @@ public class Main {
     }
 
     private static int numOfPeople(String[] lines) {
-        ArrayList<String> names = new ArrayList<>();
-        for (int i = 4; i < lines.length; i+=4) {
-            String name = extractName(lines[i]);
-            names.add(name);
-        }
-        Set<String> uniquePeople = new HashSet<String>(names);
-        return uniquePeople.size() - 1;
+        return namesList(lines).size() - 1;
     }
     private static String extractName(String line) {
         int index = line.indexOf(":");
@@ -71,32 +59,36 @@ public class Main {
         return name;
     }
     private static String totalMeetingTime(String[] lines) {
-        int len = lines.length;
-        String timeDuration = lines[len-2];
-        String minutes = timeDuration.substring(20, 22);
-        String seconds = timeDuration.substring(23, 25);
-        Integer sec = Integer.valueOf(seconds);
-        Integer min = Integer.valueOf(minutes);
-        double partOfMinute = (double) sec/60;
-        double time = min + partOfMinute;
-        String newTime = String.format("%.2f", time) + " min";
+        double totalTime = 0.0;
 
-        return newTime;
+        String[] arr = namesList(lines).toArray(new String[namesList(lines).size()]);
+        for (int i = 1; i < arr.length; i++) {
+            String totalString = peopleTalkTime(lines, arr[i]);
+            String time = totalString.substring(0, 4);
+            double theTime = Double.parseDouble(time);
+            totalTime = totalTime + theTime;
+        }
+        return totalTime + " min";
     }
     private static int numOfSwitches(String[] lines) {
         int counter = 0;
         for (int i = 4; i < lines.length-4; i+=4) {
-            int index = lines[i].indexOf(":");
-            int index2 = lines[i+4].indexOf(":");
-            String firstPerson = lines[i].substring(0, index+1);
-            String secondPerson = lines[i+4].substring(0, index2+1);
-            if (!firstPerson.equals(secondPerson)) {
-                counter++;
+                int index = lines[i].indexOf(":");
+                int index2 = lines[i+4].indexOf(":");
+                String firstPerson = lines[i].substring(0, index+1);
+                String secondPerson = lines[i+4].substring(0, index2+1);
+                if (firstPerson.equals("")) {
+                    int oldIndex = lines[i-4].indexOf(":");
+                    firstPerson = lines[i-4].substring(0, oldIndex+1);
+                }
+                if (secondPerson.equals("")) secondPerson = lines[i].substring(0, index+1);
+                if (!firstPerson.equals(secondPerson)) {
+                    counter++;
             }
         }
         return counter;
     }
-    private static String totalTalkTime(String[] lines, String name) {
+    private static String peopleTalkTime(String[] lines, String name) {
         double total_time = 0.0;
         for (int i = 3; i < lines.length; i+=4) {
             if (lines[i+1].contains(name)) {
@@ -142,29 +134,14 @@ public class Main {
 
         return total;
     }
-    public static double calcSec(String line) {
-        String start = line.substring(0, 11);
-        String end = line.substring(17, 29);
-
-        String minuteStart = start.substring(3, 5);
-        String secondStart = start.substring(6, 11);
-
-        String minuteEnd = end.substring(3, 5);
-        String secondEnd = end.substring(6, 11);
-
-        double minS = Double.parseDouble(minuteStart);
-        double secS = Double.parseDouble(secondStart);
-        double secStart = secS/60;
-        double startTotalMin = minS + secStart;
-
-        double minE = Double.parseDouble(minuteEnd);
-        double secE = Double.parseDouble(secondEnd);
-        double secEnd = secE/60;
-        double endTotalMin = minE + secEnd;
-
-        double total_min = endTotalMin - startTotalMin;
-        double total_sec = total_min * 60;
-        return total_sec;
+    private static Set<String> namesList(String[] lines) {
+        ArrayList<String> names = new ArrayList<>();
+        for (int i = 4; i < lines.length; i+=4) {
+            String name = extractName(lines[i]);
+            names.add(name);
+        }
+        Set<String> uniquePeople = new HashSet<>(names);
+        return uniquePeople;
     }
     private static String readFile(String filePath) {
         StringBuilder sb = new StringBuilder();

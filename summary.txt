@@ -1,0 +1,8 @@
+Total # of people: -1
+Total length of session: 0.0 min
+Total # of speaker switches: 0
+
+Total Talk Time: 
+
+
+Average speaking time: 
